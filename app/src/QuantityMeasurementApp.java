@@ -11,12 +11,10 @@ public class QuantityMeasurementApp {
             this.conversionFactor = conversionFactor;
         }
 
-        // Helper to get total value in base unit (Inches)
         private double toBase(double value) {
             return value * this.conversionFactor;
         }
 
-        // Helper to convert from base unit back to this unit
         private double fromBase(double baseValue) {
             return baseValue / this.conversionFactor;
         }
@@ -33,19 +31,25 @@ public class QuantityMeasurementApp {
         }
 
         /**
-         * UC6: Adds another length to this one.
-         * Returns result in the unit of the first operand (this).
+         * UC6: Add using the unit of the first operand as default
          */
         public QuantityLength add(QuantityLength that) {
-            Objects.requireNonNull(that, "Operand cannot be null");
+            return add(this, that, this.unit);
+        }
 
-            // 1. Convert both to base unit
-            double sumInBase = this.unit.toBase(this.value) + that.unit.toBase(that.value);
+        /**
+         * UC7: Addition with explicit target unit specification (Static Overload)
+         */
+        public static QuantityLength add(QuantityLength l1, QuantityLength l2, LengthUnit targetUnit) {
+            Objects.requireNonNull(l1, "First operand is null");
+            Objects.requireNonNull(l2, "Second operand is null");
+            Objects.requireNonNull(targetUnit, "Target unit is null");
 
-            // 2. Convert sum back to 'this' unit
-            double finalValue = this.unit.fromBase(sumInBase);
+            // Convert both to base, sum, and convert to target
+            double sumInBase = l1.unit.toBase(l1.value) + l2.unit.toBase(l2.value);
+            double resultValue = targetUnit.fromBase(sumInBase);
 
-            return new QuantityLength(finalValue, this.unit);
+            return new QuantityLength(resultValue, targetUnit);
         }
 
         @Override
@@ -53,37 +57,28 @@ public class QuantityMeasurementApp {
             if (this == obj) return true;
             if (obj == null || getClass() != obj.getClass()) return false;
             QuantityLength that = (QuantityLength) obj;
-            // Precision-safe comparison (4 decimal places)
-            return Math.abs(this.unit.toBase(this.value) - that.unit.toBase(that.value)) < 0.0001;
+            return Math.abs(this.unit.toBase(this.value) - that.unit.toBase(that.value)) < 0.001;
         }
 
         @Override
         public String toString() {
-            return String.format("%.2f %s", value, unit);
+            return String.format("%.3f %s", value, unit);
         }
     }
 
-    // --- API Demonstration Methods ---
-
-    public static void demonstrateAddition(QuantityLength l1, QuantityLength l2) {
-        QuantityLength result = l1.add(l2);
-        System.out.println("Addition: (" + l1 + ") + (" + l2 + ") = " + result);
-    }
-
     public static void main(String[] args) {
-        // Test 1: 1 ft + 12 in = 2 ft
         QuantityLength oneFoot = new QuantityLength(1.0, LengthUnit.FEET);
         QuantityLength twelveInches = new QuantityLength(12.0, LengthUnit.INCHES);
-        demonstrateAddition(oneFoot, twelveInches);
 
-        // Test 2: 2 in + 5 cm = ? in
-        QuantityLength twoInches = new QuantityLength(2.0, LengthUnit.INCHES);
-        QuantityLength fiveCm = new QuantityLength(5.0, LengthUnit.CENTIMETERS);
-        demonstrateAddition(twoInches, fiveCm);
+        // UC7 Test: 1 Foot + 12 Inches -> Result in YARDS
+        QuantityLength resultInYards = QuantityLength.add(oneFoot, twelveInches, LengthUnit.YARDS);
 
-        // Test 3: Commutative Property (A+B should equal B+A in value)
-        QuantityLength resultAB = oneFoot.add(twelveInches); // Results in Feet
-        QuantityLength resultBA = twelveInches.add(oneFoot); // Results in Inches
-        System.out.println("Commutative Check (Equal values?): " + resultAB.equals(resultBA));
+        System.out.println("Adding " + oneFoot + " and " + twelveInches);
+        System.out.println("Target Unit: YARDS");
+        System.out.println("Result: " + resultInYards); // Should be ~0.667 YARDS
+
+        // UC7 Test: Symmetry/Commutativity
+        QuantityLength resultSymmetric = QuantityLength.add(twelveInches, oneFoot, LengthUnit.YARDS);
+        System.out.println("Commutative Check: " + resultInYards.equals(resultSymmetric));
     }
 }
