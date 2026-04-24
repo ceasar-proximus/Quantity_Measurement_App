@@ -1,9 +1,17 @@
 import java.util.Objects;
 
+/**
+ * UC8: Single-file implementation with standalone-style architecture.
+ * The Enum now holds the "Responsibility" for conversion.
+ */
 public class QuantityMeasurementApp {
 
-    public enum LengthUnit {
-        FEET(12.0), INCHES(1.0), YARDS(36.0), CENTIMETERS(0.393701);
+    // --- Standalone Enum Architecture ---
+    enum LengthUnit {
+        FEET(12.0),
+        INCHES(1.0),
+        YARDS(36.0),
+        CENTIMETERS(0.393701);
 
         private final double conversionFactor;
 
@@ -11,45 +19,36 @@ public class QuantityMeasurementApp {
             this.conversionFactor = conversionFactor;
         }
 
-        private double toBase(double value) {
+        // Unit's new responsibility: Convert TO base (Inches)
+        public double convertToBaseUnit(double value) {
             return value * this.conversionFactor;
         }
 
-        private double fromBase(double baseValue) {
+        // Unit's new responsibility: Convert FROM base (Inches)
+        public double convertFromBaseUnit(double baseValue) {
             return baseValue / this.conversionFactor;
         }
     }
 
+    // --- Quantity Class (Delegates logic to the Unit) ---
     public static class QuantityLength {
         private final double value;
         private final LengthUnit unit;
 
         public QuantityLength(double value, LengthUnit unit) {
-            if (!Double.isFinite(value)) throw new IllegalArgumentException("Invalid value");
-            this.unit = Objects.requireNonNull(unit, "Unit cannot be null");
+            if (!Double.isFinite(value)) throw new IllegalArgumentException("Invalid number");
             this.value = value;
+            this.unit = Objects.requireNonNull(unit, "Unit required");
         }
 
-        /**
-         * UC6: Add using the unit of the first operand as default
-         */
-        public QuantityLength add(QuantityLength that) {
-            return add(this, that, this.unit);
+        public QuantityLength convertTo(LengthUnit targetUnit) {
+            double base = this.unit.convertToBaseUnit(this.value);
+            return new QuantityLength(targetUnit.convertFromBaseUnit(base), targetUnit);
         }
 
-        /**
-         * UC7: Addition with explicit target unit specification (Static Overload)
-         */
-        public static QuantityLength add(QuantityLength l1, QuantityLength l2, LengthUnit targetUnit) {
-            Objects.requireNonNull(l1, "First operand is null");
-            Objects.requireNonNull(l2, "Second operand is null");
-            Objects.requireNonNull(targetUnit, "Target unit is null");
-
-            // Convert both to base, sum, and convert to target
-            double sumInBase = l1.unit.toBase(l1.value) + l2.unit.toBase(l2.value);
-            double resultValue = targetUnit.fromBase(sumInBase);
-
-            return new QuantityLength(resultValue, targetUnit);
+        public static QuantityLength add(QuantityLength l1, QuantityLength l2, LengthUnit target) {
+            double sumBase = l1.unit.convertToBaseUnit(l1.value) + l2.unit.convertToBaseUnit(l2.value);
+            return new QuantityLength(target.convertFromBaseUnit(sumBase), target);
         }
 
         @Override
@@ -57,28 +56,28 @@ public class QuantityMeasurementApp {
             if (this == obj) return true;
             if (obj == null || getClass() != obj.getClass()) return false;
             QuantityLength that = (QuantityLength) obj;
-            return Math.abs(this.unit.toBase(this.value) - that.unit.toBase(that.value)) < 0.001;
+            return Math.abs(this.unit.convertToBaseUnit(this.value) -
+                    that.unit.convertToBaseUnit(that.value)) < 0.001;
         }
 
         @Override
         public String toString() {
-            return String.format("%.3f %s", value, unit);
+            return String.format("%.2f %s", value, unit);
         }
     }
 
+    // --- Main Method for Verification ---
     public static void main(String[] args) {
-        QuantityLength oneFoot = new QuantityLength(1.0, LengthUnit.FEET);
-        QuantityLength twelveInches = new QuantityLength(12.0, LengthUnit.INCHES);
+        // Equality Check
+        QuantityLength oneYard = new QuantityLength(1.0, LengthUnit.YARDS);
+        QuantityLength threeFeet = new QuantityLength(3.0, LengthUnit.FEET);
+        System.out.println("1 Yard == 3 Feet: " + oneYard.equals(threeFeet));
 
-        // UC7 Test: 1 Foot + 12 Inches -> Result in YARDS
-        QuantityLength resultInYards = QuantityLength.add(oneFoot, twelveInches, LengthUnit.YARDS);
+        // Conversion Check
+        System.out.println("1 Yard in Inches: " + oneYard.convertTo(LengthUnit.INCHES));
 
-        System.out.println("Adding " + oneFoot + " and " + twelveInches);
-        System.out.println("Target Unit: YARDS");
-        System.out.println("Result: " + resultInYards); // Should be ~0.667 YARDS
-
-        // UC7 Test: Symmetry/Commutativity
-        QuantityLength resultSymmetric = QuantityLength.add(twelveInches, oneFoot, LengthUnit.YARDS);
-        System.out.println("Commutative Check: " + resultInYards.equals(resultSymmetric));
+        // Addition Check
+        QuantityLength sum = QuantityLength.add(oneYard, new QuantityLength(12, LengthUnit.INCHES), LengthUnit.FEET);
+        System.out.println("1 Yard + 12 Inches in Feet: " + sum); // Result: 4.00 FEET
     }
 }
