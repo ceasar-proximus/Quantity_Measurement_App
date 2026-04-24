@@ -1,8 +1,12 @@
 public class QuantityMeasurementApp {
 
-    // Step 1: Enum to define units and their conversion factors to a base unit (Inches)
+    // Step 1: Update Enum with Yards and Centimeters
+    // Base Unit: INCHES (1.0)
     public enum LengthUnit {
-        FEET(12.0), INCHES(1.0);
+        FEET(12.0),
+        INCHES(1.0),
+        YARDS(36.0),         // 1 Yard = 3 Feet = 36 Inches
+        CENTIMETERS(0.393701); // 1 CM = 0.393701 Inches
 
         public final double conversionFactor;
 
@@ -11,7 +15,6 @@ public class QuantityMeasurementApp {
         }
     }
 
-    // Step 2: Generic Quantity class for Length
     public static class QuantityLength {
         private final double value;
         private final LengthUnit unit;
@@ -23,33 +26,37 @@ public class QuantityMeasurementApp {
 
         @Override
         public boolean equals(Object obj) {
-            // Standard equality checks
             if (this == obj) return true;
             if (obj == null || getClass() != obj.getClass()) return false;
 
             QuantityLength that = (QuantityLength) obj;
 
-            // Convert both values to a base unit (Inches) before comparing
+            // Convert to base unit (Inches) for comparison
             double value1 = this.value * this.unit.conversionFactor;
             double value2 = that.value * that.unit.conversionFactor;
 
-            return Double.compare(value1, value2) == 0;
+            // Using a small delta for floating point comparison of CM
+            return Math.abs(value1 - value2) < 0.00001;
         }
     }
 
     public static void main(String[] args) {
-        // Test Case: Feet to Inches (1 ft = 12 inch)
-        QuantityLength oneFeet = new QuantityLength(1.0, LengthUnit.FEET);
-        QuantityLength twelveInches = new QuantityLength(12.0, LengthUnit.INCHES);
+        // Yard to Feet
+        System.out.println("1 Yard == 3 Feet: " +
+                new QuantityLength(1.0, LengthUnit.YARDS).equals(new QuantityLength(3.0, LengthUnit.FEET)));
 
-        System.out.println("Input: 1.0 ft and 12.0 inches");
-        System.out.println("Output: Equal (" + oneFeet.equals(twelveInches) + ")");
+        // Yard to Inches
+        System.out.println("1 Yard == 36 Inches: " +
+                new QuantityLength(1.0, LengthUnit.YARDS).equals(new QuantityLength(36.0, LengthUnit.INCHES)));
 
-        // Test Case: Inch to Inch
-        QuantityLength oneInch = new QuantityLength(1.0, LengthUnit.INCHES);
-        QuantityLength anotherInch = new QuantityLength(1.0, LengthUnit.INCHES);
+        // Centimeters to Inches
+        System.out.println("1 CM == 0.393701 Inches: " +
+                new QuantityLength(1.0, LengthUnit.CENTIMETERS).equals(new QuantityLength(0.393701, LengthUnit.INCHES)));
 
-        System.out.println("\nInput: 1.0 inch and 1.0 inch");
-        System.out.println("Output: Equal (" + oneInch.equals(anotherInch) + ")");
+        // Transitive Property (1 Yard -> 3 Feet -> 36 Inches)
+        QuantityLength y = new QuantityLength(1.0, LengthUnit.YARDS);
+        QuantityLength f = new QuantityLength(3.0, LengthUnit.FEET);
+        QuantityLength i = new QuantityLength(36.0, LengthUnit.INCHES);
+        System.out.println("Transitive (Y=F and F=I, so Y=I): " + (y.equals(f) && f.equals(i) && y.equals(i)));
     }
 }
